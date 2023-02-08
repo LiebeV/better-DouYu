@@ -13,7 +13,7 @@
     'use strict';
 
     let css=`
-        .KpgOK77CDz9VkQfj_NamO{
+        .canvas{
             visibility: hidden !important
         }
     `
