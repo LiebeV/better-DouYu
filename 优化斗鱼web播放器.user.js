@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         关闭斗鱼虚化背景
+// @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      0.1
+// @version      0.2
 // @description  通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题
 // @author       LiebeV
 // @match        https://www.douyu.com/*
@@ -13,9 +13,12 @@
     'use strict';
 
     let css=`
-        .canvas{
+        canvas{
             visibility: hidden !important
-        }
+        }// 无法确认虚化背景类名是否不变，使用canvas代替类名定位，可能会关闭其他功能
+        label{
+            display: none !important
+        }// 关闭角落处文字水印，图片水印无法通过css定位
     `
     GM_addStyle(css)
 })();
