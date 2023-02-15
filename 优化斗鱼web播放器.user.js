@@ -16,7 +16,7 @@
         canvas{
             visibility: hidden !important
         }
-        label{
+        .watermark-442a18{
             display: none !important
         }
     `
