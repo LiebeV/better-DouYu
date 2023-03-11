@@ -13,7 +13,8 @@
 
 'use strict';
 
-let roomIds = [];
+//占位，防止首次加载时失败
+let roomIds = ['lajidouyu'];
 const userRoomIds = GM_getValue('roomIds', '[]');
 
 async function blur() {
@@ -26,6 +27,8 @@ async function blur() {
     `;
 }
 
+//保留右侧弹幕区会被置顶留存的弹幕内容
+//保留礼物展示
 async function danmu() {
     const url = window.location.href;
 
@@ -58,8 +61,8 @@ async function showSettings() {
     for (let i = 0; i < roomIds.length; i++) {
         message += `${i + 1}. ${roomIds[i]}\n`;
     }
-    
-    const roomIdInput = prompt(`${message}\n请输入要清除弹幕的房间号：`);
+
+    const roomIdInput = prompt(`${message}\n请输入要移除弹幕的房间号：`);
     if (roomIdInput) {
         addRoomId(roomIdInput);
     }
@@ -86,4 +89,5 @@ async function addStyle(css) {
     addStyle(css);
 })();
 
-//已知问题：setValue存储的数组初始化异常
+//已知问题，message展示无效
+//更新计划，移除房间号
