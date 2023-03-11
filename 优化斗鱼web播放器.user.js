@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         优化斗鱼web播放器_test
+// @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
 // @version      1.0
 // @description  通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题
