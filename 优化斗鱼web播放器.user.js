@@ -1,11 +1,9 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.0
-// @description  通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题
+// @version      1.1
+// @description  优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
 // @author       LiebeV
-// @updateURL    https://github.com/LiebeV/disable-DY-blur/blob/main/%E4%BC%98%E5%8C%96%E6%96%97%E9%B1%BCweb%E6%92%AD%E6%94%BE%E5%99%A8.meta.js
-// @downloadURL  https://github.com/LiebeV/disable-DY-blur/blob/main/%E4%BC%98%E5%8C%96%E6%96%97%E9%B1%BCweb%E6%92%AD%E6%94%BE%E5%99%A8.user.js
 // @match        https://www.douyu.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=douyu.com
 // @grant        GM_registerMenuCommand
@@ -15,9 +13,8 @@
 
 'use strict';
 
-//占位，防止首次加载时失败
-let roomIds = ['lajidouyu'];
-const userRoomIds = GM_getValue('roomIds', '[]');
+let roomIds = GM_getValue('roomIds', '[]');
+const userRoomIds = roomIds;
 
 async function blur() {
     console.log('已经创建blur样式表');
@@ -48,25 +45,33 @@ async function danmu() {
     }
 }
 
-async function addRoomId(roomId) {
+async function updateRoomId(roomId) {
     if (!roomIds.includes(roomId)) {
         roomIds.push(roomId);
         console.log(`已添加房间号 ${roomId}`);
         GM_setValue('roomIds', roomIds);
     } else {
-        console.log(`房间号 ${roomId} 已存在`);
+        const index = roomIds.indexOf(roomId);
+        if (index !== -1) {
+            roomIds.splice(index, 1);
+            console.log(`已移除房间号 ${roomId}`);
+            GM_setValue('roomIds', roomIds);
+        } else {
+            console.log(`输入不合法`);
+        }
     }
 }
 
 async function showSettings() {
     let message = "当前设置的房间号列表：\n";
-    for (let i = 0; i < roomIds.length; i++) {
-        message += `${i + 1}. ${roomIds[i]}\n`;
+    const idList = GM_getValue('roomIds', '[]');
+    for (let i = 0; i < idList.length; i++) {
+        message += `${i + 1}. ${idList[i]}\n`;
     }
 
-    const roomIdInput = prompt(`${message}\n请输入要移除弹幕的房间号：`);
+    const roomIdInput = prompt(`${message}\n请输入要移除（恢复）弹幕的房间号：（点击确定后请刷新网页以使其生效）`);
     if (roomIdInput) {
-        addRoomId(roomIdInput);
+        updateRoomId(roomIdInput);
     }
 }
 
@@ -91,5 +96,5 @@ async function addStyle(css) {
     addStyle(css);
 })();
 
-//已知问题，message展示无效
-//更新计划，移除房间号
+//已知问题，无
+//更新计划，添加设置反馈
