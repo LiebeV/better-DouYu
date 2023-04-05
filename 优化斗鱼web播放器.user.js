@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         优化斗鱼web播放器
+// @name         优化斗鱼,关闭虚化背景,全量移除弹幕
 // @namespace    https://www.liebev.site
-// @version      1.3
+// @version      1.4
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,8 @@
 
 'use strict';
 
-//更新日志，v1.3，现在添加（移除）房间号时不需要刷新网页就可以生效了
+//更新日志，v1.4，应反馈要求，添加了移除topFloater弹幕的功能
+//**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”）
 
@@ -40,6 +41,7 @@ async function danmu() {
         console.log('已经创建danmu样式表');
         return `
         .Barrage-main,
+        .Barrage-topFloater,        
         .comment-37342a {
           visibility: hidden !important;
         }
