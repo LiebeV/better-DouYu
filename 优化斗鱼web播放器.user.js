@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         优化斗鱼,关闭虚化背景,全量移除弹幕
+// @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
 // @version      1.4
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
