@@ -6,4 +6,4 @@
 关闭***斗鱼***web端全屏虚化背景 ,去除直播间文字水印
 
 其他项目：
-</a> <a href="https://github.com/LiebeV/douyu-all-level-ban" target="_blank"><img src="https://img.shields.io/badge/弹幕屏蔽-1.0.1-red?logo=github"></a>
+</a> <a href="https://github.com/LiebeV/douyu-all-level-ban" target="_blank"><img src="https://img.shields.io/badge/弹幕屏蔽-1.1-red?logo=github"></a>
