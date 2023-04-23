@@ -4,6 +4,7 @@
 // @version      0.1
 // @description  douyu，优化斗鱼web鱼吧，自动展开所有overflow内容，不给小黑子贡献阅读量
 // @author       LiebeV
+// @license      MIT: Copyright (c) 2023 LiebeV
 // @match        https://yuba.douyu.com/group/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=douyu.com
 // @grant        none
