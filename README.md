@@ -8,4 +8,4 @@
 其他项目：
 </a> <a href="https://github.com/LiebeV/douyu-all-level-ban" target="_blank"><img src="https://img.shields.io/badge/弹幕屏蔽-1.1-red?logo=github"></a>
 
-#####鱼吧项目在考虑是否merge
+##### 鱼吧项目在考虑是否merge
