@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.5
+// @version      1.5.1
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,13 +14,14 @@
 
 "use strict";
 
-//更新日志，v1.5，添加了快捷键 "ALT + L"(不区分左右和大小写，但推荐使用右ALT + 小写l)，用于快速开关全量屏幕弹幕的功（状态不会保存到存储中）
+//更新日志，v1.5.1，添加了快捷键 "F"(不区分大小写)，用于快速切换全屏播放
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
-//更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”）
+//更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
 
 let roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
+let isFull = 0;
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
@@ -111,19 +112,45 @@ async function listener() {
             rewrite();
         }
     });
+    document.addEventListener("keydown", function (event) {
+        if (event.key.toLocaleLowerCase() === "f") {
+            // console.log("快捷键触发");
+            full();
+        }
+    });
 }
 
-async function rewrite(){
+async function rewrite() {
     const liebev = document.getElementById("LiebeV");
     const checker = liebev.innerHTML;
     var css;
-    if(checker.indexOf('.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}') !== -1){
-        css = checker.replace('.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}','.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}')
+    if (
+        checker.indexOf(
+            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}"
+        ) !== -1
+    ) {
+        css = checker.replace(
+            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}",
+            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}"
+        );
     } else {
-        css = checker.replace('.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}','.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}')
+        css = checker.replace(
+            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}",
+            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}"
+        );
     }
     // console.log(css);
     addStyle(css);
+}
+
+async function full() {
+    if (isFull == 0) {
+        document.querySelector(".fs-781153").click();
+        isFull = 1;
+    } else if (isFull == 1) {
+        document.querySelector(".fs-exit-b6e6a7").click();
+        isFull = 0;
+    }
 }
 
 (async function () {
