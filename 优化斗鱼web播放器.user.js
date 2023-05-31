@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.5.1
+// @version      1.6
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,7 @@
 
 "use strict";
 
-//更新日志，v1.5.1，添加了快捷键 "F"(不区分大小写)，用于快速切换全屏播放
+//更新日志，v1.6，修改了全屏快捷键 "F" >>> "ALT + U"（避免触发浏览器级快捷键）； 添加了快捷键"ALF + W", 用于切换宽屏模式； 添加了屏蔽鱼吧热议飘屏的功能（默认永久开启）
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
@@ -22,11 +22,12 @@
 let roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
 let isFull = 0;
+let isWide = 0;
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
     console.log("已经创建blur样式表");
-    return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18{visibility: hidden !important;}`;
+    return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}`;
 }
 
 // 屏蔽右侧弹幕区及飘屏弹幕区的css
@@ -95,12 +96,12 @@ async function updateRoomId(roomId) {
 }
 
 async function DMbye() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
+    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
     addStyle(css);
 }
 
 async function DMback() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
+    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
     addStyle(css);
 }
 
@@ -113,9 +114,15 @@ async function listener() {
         }
     });
     document.addEventListener("keydown", function (event) {
-        if (event.key.toLocaleLowerCase() === "f") {
+        if (event.altKey && event.key.toLocaleLowerCase() === "u") {
             // console.log("快捷键触发");
             full();
+        }
+    });
+        document.addEventListener("keydown", function (event) {
+        if (event.altKey && event.key.toLocaleLowerCase() === "w") {
+            // console.log("快捷键触发");
+            wide();
         }
     });
 }
@@ -150,6 +157,16 @@ async function full() {
     } else if (isFull == 1) {
         document.querySelector(".fs-exit-b6e6a7").click();
         isFull = 0;
+    }
+}
+
+async function wide() {
+    if (isWide == 0) {
+        document.querySelector(".wfs-2a8e83").click();
+        isWide = 1;
+    } else if (isWide == 1) {
+        document.querySelector(".wfs-exit-180268").click();
+        isWide = 0;
     }
 }
 
