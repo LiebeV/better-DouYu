@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.6
+// @version      1.7
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,7 @@
 
 "use strict";
 
-//更新日志，v1.6，修改了全屏快捷键 "F" >>> "ALT + U"（避免触发浏览器级快捷键）； 添加了快捷键"ALF + W", 用于切换宽屏模式； 添加了屏蔽鱼吧热议飘屏的功能（默认永久开启）
+//更新日志，v1.7，添加了快捷键“ALT + 1/2/3...”，用于切换直播间画质
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
@@ -119,10 +119,16 @@ async function listener() {
             full();
         }
     });
-        document.addEventListener("keydown", function (event) {
+    document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "w") {
             // console.log("快捷键触发");
             wide();
+        }
+    });
+    document.addEventListener("keydown", function (event) {
+        if (event.altKey && event.key >= "1" && event.key <= "5") {
+            // console.log("快捷键触发");
+            res(parseInt(event.key));
         }
     });
 }
@@ -168,6 +174,18 @@ async function wide() {
         document.querySelector(".wfs-exit-180268").click();
         isWide = 0;
     }
+}
+
+async function res(numberkey) {
+    const resinput = document.querySelector(".tipItem-898596 input[value='画质 ']");
+    const resul = resinput.nextSibling;
+    let reslist = [];
+    resul.childNodes.forEach(function (li) {
+        reslist.push(li);
+    });
+    // console.log(reslist);
+    const choice = numberkey - 1;
+    reslist[choice].click();
 }
 
 (async function () {
