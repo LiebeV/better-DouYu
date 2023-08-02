@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.7
-// @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏的问题，屏蔽独立直播间的弹幕显示，移除文字水印
+// @version      1.8
+// @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
 // @match        https://www.douyu.com/*
@@ -14,11 +14,12 @@
 
 "use strict";
 
-//更新日志，v1.7，添加了快捷键“ALT + 1/2/3...”，用于切换直播间画质
+//更新日志，v1.8， 添加了每分钟清楚右侧弹幕区全部弹幕的功能，防止由于DOM节点过多而造成的卡顿
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
-//更新计划，无（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
+//更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
 
+// 定义一些let变量
 let roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
 let isFull = 0;
@@ -27,7 +28,7 @@ let isWide = 0;
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
     console.log("已经创建blur样式表");
-    return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}`;
+    return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}`;
 }
 
 // 屏蔽右侧弹幕区及飘屏弹幕区的css
@@ -44,6 +45,7 @@ async function danmu() {
     }
 }
 
+// 用于合并其他本人制作的脚本中生成的css
 async function addStyle(css) {
     const liebev = document.getElementById("LiebeV");
     // console.log(liebev);
@@ -51,6 +53,7 @@ async function addStyle(css) {
         liebev.innerHTML = css;
         console.log("原css已更新");
     } else {
+        // 此脚本单独运作时创建liebev标签
         const style = document.createElement("style");
         style.id = "LiebeV";
         style.type = "text/css";
@@ -95,13 +98,14 @@ async function updateRoomId(roomId) {
     }
 }
 
+// DMbye和back是setting修改时调用的函数
 async function DMbye() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
+    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
     addStyle(css);
 }
 
 async function DMback() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
+    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
     addStyle(css);
 }
 
@@ -109,30 +113,31 @@ async function listener() {
     // console.log("快捷键监听设置完毕");
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "l") {
-            // console.log("快捷键触发");
+            // console.log("L快捷键触发");
             rewrite();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "u") {
-            // console.log("快捷键触发");
+            // console.log("U快捷键触发");
             full();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "w") {
-            // console.log("快捷键触发");
+            // console.log("W快捷键触发");
             wide();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key >= "1" && event.key <= "5") {
-            // console.log("快捷键触发");
+            // console.log("RES快捷键触发");
             res(parseInt(event.key));
         }
     });
 }
 
+// 类似DMbye和back，但是由快捷键触发
 async function rewrite() {
     const liebev = document.getElementById("LiebeV");
     const checker = liebev.innerHTML;
@@ -156,6 +161,9 @@ async function rewrite() {
     addStyle(css);
 }
 
+// 点击原播放器控件来切换全屏
+// 因为控件会变化，所以可以不通过0/1判断
+// 因为在点击原播放器控件，所以需要等待其加载
 async function full() {
     if (isFull == 0) {
         document.querySelector(".fs-781153").click();
@@ -166,6 +174,8 @@ async function full() {
     }
 }
 
+// 点击原播放器控件来切换宽屏
+// 因为控件会变化，所以可以不通过0/1判断
 async function wide() {
     if (isWide == 0) {
         document.querySelector(".wfs-2a8e83").click();
@@ -176,6 +186,10 @@ async function wide() {
     }
 }
 
+// 点击原播放器控件来调整清晰度
+// 最多只见过5个选项。原画/8M/4M/超清/高清。溢出也不会影响
+// 因为清晰度控件display为none，所以可以直接点击
+// 但线路选项是js插入的，无法静态点击
 async function res(numberkey) {
     const resinput = document.querySelector(".tipItem-898596 input[value='画质 ']");
     const resul = resinput.nextSibling;
@@ -188,11 +202,21 @@ async function res(numberkey) {
     reslist[choice].click();
 }
 
+// 点击原弹幕区控件来清除DOM节点（网页默认DOM上限为200）
+async function rightdomremove() {
+    var clearbtn = document.querySelector(".Barrage-toolbarClear");
+    clearbtn.click();
+    console.log("doms been removed");
+}
+
 (async function () {
     const blurcss = await blur();
     const danmucss = await danmu();
     const css = blurcss + danmucss;
     console.log("样式表已合并" + css);
     addStyle(css);
+    // 添加全部eventlistener
     listener();
+    // 定时触发清屏（60s）
+    setInterval(rightdomremove, 60 * 1000);
 })();
