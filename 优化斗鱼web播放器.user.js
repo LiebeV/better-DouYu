@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site
-// @version      1.8
+// @version      1.8.1
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,7 @@
 
 "use strict";
 
-//更新日志，v1.8， 添加了每分钟清楚右侧弹幕区全部弹幕的功能，防止由于DOM节点过多而造成的卡顿
+//更新日志，v1.8.1， 现在可以通过插件设置面板（在房间号设置旁边）开启/关闭自动清空弹幕的功能（默认关闭）
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
@@ -24,6 +24,8 @@ let roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
 let isFull = 0;
 let isWide = 0;
+var IntervalId;
+let IntervalRun = false;
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
@@ -209,6 +211,29 @@ async function rightdomremove() {
     console.log("doms been removed");
 }
 
+async function ifintervalrun() {
+    if (IntervalRun == true) {
+        // 定时触发清屏（60s）
+        IntervalId = setInterval(rightdomremove, 60 * 1000);
+        IntervalRun = false;
+        console.log("已设置定时清屏");
+    } else {
+        clearInterval(IntervalId);
+        IntervalRun = true;
+        console.log("已关闭定时清屏");
+    }
+}
+
+GM_registerMenuCommand("定时清屏右侧弹幕", function () {
+    const isConfirm = confirm(
+        // 因为初始化调用时更改了IntervalRun的值，所以表达式逻辑相反
+        `当前定时器状态：${IntervalRun ? "禁用" : "启用"}\n是否切换定时器状态？`
+    );
+    if (isConfirm) {
+        ifintervalrun();
+    }
+});
+
 (async function () {
     const blurcss = await blur();
     const danmucss = await danmu();
@@ -217,6 +242,5 @@ async function rightdomremove() {
     addStyle(css);
     // 添加全部eventlistener
     listener();
-    // 定时触发清屏（60s）
-    setInterval(rightdomremove, 60 * 1000);
+    ifintervalrun();
 })();
