@@ -1,6 +1,6 @@
 # disable Douyu blured Canvas
 ![Greasy Fork](https://img.shields.io/greasyfork/v/461630?label=Greasy%20Fork&color=green)
- <a href="https://github.com/LiebeV/disable-DY-blur/releases" target="_blank"><img src="https://img.shields.io/badge/Releases-v1.3-green?logo=github"></a>
+![GitHub release (with filter)](https://img.shields.io/github/v/release/LiebeV/disable-DY-blur?logo=github&color=green)
 ## 请通过Greasy Fork（自动更新） 或 Releases（手动更新） 向油猴添加user.js以使用此脚本
 
 
