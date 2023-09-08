@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.0-pre1
+// @version      2.0
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,7 @@
 
 "use strict";
 
-//更新日志，v2.0-pre1，修改全部快捷键触发方式（不再点击原播放器控件）
+//更新日志，v2.0，修改了全部快捷键触发方式（不再点击原播放器控件）
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
@@ -22,8 +22,8 @@
 // 定义一些let变量
 let roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
-let isFull = 0;
-let isWide = 0;
+// let isFull = 0;
+// let isWide = 0;
 var IntervalId;
 let IntervalRun = false;
 
@@ -163,35 +163,24 @@ async function rewrite() {
     addStyle(css);
 }
 
-// 点击原播放器控件来切换全屏
-// 因为控件会变化，所以可以不通过0/1判断
+// 发送浏览器全屏/退出全屏事件
 // 无需等待控件加载完成
 async function full() {
-    if (isFull == 0) {
-        var videoContainer = document.querySelector("#js-player-video-case");
-        if (videoContainer.requestFullscreen) {
-            videoContainer.requestFullscreen();
-          }
-        isFull = 1;
-    } else if (isFull == 1) {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-          }
-        isFull = 0;
+    if (!document.fullscreenElement) {
+        document.querySelector("#js-player-video-case").requestFullscreen();
+    } else {
+        document.exitFullscreen();
     }
 }
 
-// 点击原播放器控件来切换宽屏
-// 因为控件会变化，所以可以不通过0/1判断
+// 模拟双击".video-container-dbc7dc"
 // 因为网页原本就提供了双击播放器来切换的功能，故不做修改
 async function wide() {
-    if (isWide == 0) {
-        document.querySelector(".wfs-2a8e83").click();
-        isWide = 1;
-    } else if (isWide == 1) {
-        document.querySelector(".wfs-exit-180268").click();
-        isWide = 0;
-    }
+    let evt = new MouseEvent("dblclick", {
+        bubbles: true,
+        cancelable: true,
+    });
+    document.querySelector(".video-container-dbc7dc").dispatchEvent(evt);
 }
 
 // 点击原播放器控件来调整清晰度
