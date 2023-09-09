@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.0
+// @version      2.0.1
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,7 +14,7 @@
 
 "use strict";
 
-//更新日志，v2.0，修改了全部快捷键触发方式（不再点击原播放器控件）
+//更新日志，v2.0-pre1，修改全部快捷键触发方式（不再点击原播放器控件）
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
 //已知问题，无
 //更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
@@ -29,7 +29,7 @@ let IntervalRun = false;
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
-    console.log("已经创建blur样式表");
+    console.debug("已经创建blur样式表");
     return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}`;
 }
 
@@ -39,10 +39,10 @@ async function danmu() {
     const url = window.location.href;
 
     if (userRoomIds.some((roomId) => url.includes(roomId))) {
-        console.log("已经创建danmu样式表");
+        console.debug("已经创建danmu样式表");
         return `.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
     } else {
-        console.log("无需更新danmu样式表");
+        console.debug("无需更新danmu样式表");
         return `.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
     }
 }
@@ -50,10 +50,10 @@ async function danmu() {
 // 用于合并其他本人制作的脚本中生成的css
 async function addStyle(css) {
     const liebev = document.getElementById("LiebeV");
-    // console.log(liebev);
+    // console.debug(liebev);
     if (liebev) {
         liebev.innerHTML = css;
-        console.log("原css已更新");
+        console.debug("原css已更新");
     } else {
         // 此脚本单独运作时创建liebev标签
         const style = document.createElement("style");
@@ -62,7 +62,7 @@ async function addStyle(css) {
 
         style.appendChild(document.createTextNode(css));
         document.head.appendChild(style);
-        console.log("新css已插入");
+        console.debug("新css已插入");
     }
 }
 
@@ -84,18 +84,18 @@ GM_registerMenuCommand("房间号设置", showSettings);
 async function updateRoomId(roomId) {
     if (!roomIds.includes(roomId)) {
         roomIds.push(roomId);
-        console.log(`已添加房间号 ${roomId}`);
+        console.debug(`已添加房间号 ${roomId}`);
         GM_setValue("roomIds", roomIds);
         await DMbye();
     } else {
         const index = roomIds.indexOf(roomId);
         if (index !== -1) {
             roomIds.splice(index, 1);
-            console.log(`已移除房间号 ${roomId}`);
+            console.debug(`已移除房间号 ${roomId}`);
             GM_setValue("roomIds", roomIds);
             await DMback();
         } else {
-            console.log(`输入不合法`);
+            console.debug(`输入不合法`);
         }
     }
 }
@@ -112,29 +112,35 @@ async function DMback() {
 }
 
 async function listener() {
-    // console.log("快捷键监听设置完毕");
+    // console.debug("快捷键监听设置完毕");
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "l") {
-            // console.log("L快捷键触发");
+            // console.debug("L快捷键触发");
             rewrite();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "u") {
-            // console.log("U快捷键触发");
+            // console.debug("U快捷键触发");
             full();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key.toLocaleLowerCase() === "w") {
-            // console.log("W快捷键触发");
+            // console.debug("W快捷键触发");
             wide();
         }
     });
     document.addEventListener("keydown", function (event) {
         if (event.altKey && event.key >= "1" && event.key <= "5") {
-            // console.log("RES快捷键触发");
+            // console.debug("RES快捷键触发");
             res(parseInt(event.key));
+        }
+    });
+    document.addEventListener("keydown", function (event) {
+        if (event.altKey && event.key >= "6" && event.key <= "9") {
+            // console.debug("LINE快捷键触发");
+            line(parseInt(event.key));
         }
     });
 }
@@ -159,7 +165,7 @@ async function rewrite() {
             ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}"
         );
     }
-    // console.log(css);
+    // console.debug(css);
     addStyle(css);
 }
 
@@ -185,8 +191,6 @@ async function wide() {
 
 // 点击原播放器控件来调整清晰度
 // 最多只见过5个选项。原画/8M/4M/超清/高清。溢出也不会影响
-// 因为清晰度控件display为none，所以可以直接点击
-// 但线路选项是js插入的，无法静态点击
 async function res(numberkey) {
     const resinput = document.querySelector(".tipItem-898596 input[value='画质 ']");
     const resul = resinput.nextSibling;
@@ -194,16 +198,29 @@ async function res(numberkey) {
     resul.childNodes.forEach(function (li) {
         reslist.push(li);
     });
-    // console.log(reslist);
+    // console.debug(reslist);
     const choice = numberkey - 1;
     reslist[choice].click();
+}
+
+// 找到了可以用于切换线路可点击的标签
+// 最多只见过4个选项。溢出也不会影响
+async function line(numberkey) {
+    const lineinput = document.querySelectorAll("ul.menu-da2a9e li");
+    const alllines = Array.from(lineinput).filter(li => li.textContent.includes('线路'));
+    let linelist = [];
+    alllines.forEach(function (li) {
+        linelist.push(li);
+    });
+    const choice = numberkey - 6;
+    linelist[choice].click();
 }
 
 // 点击原弹幕区控件来清除DOM节点（网页默认DOM上限为200）
 async function rightdomremove() {
     var clearbtn = document.querySelector(".Barrage-toolbarClear");
     clearbtn.click();
-    console.log("doms been removed");
+    console.debug("doms been removed");
 }
 
 async function ifintervalrun() {
@@ -211,11 +228,11 @@ async function ifintervalrun() {
         // 定时触发清屏（60s）
         IntervalId = setInterval(rightdomremove, 60 * 1000);
         IntervalRun = false;
-        console.log("已设置定时清屏");
+        console.debug("已设置定时清屏");
     } else {
         clearInterval(IntervalId);
         IntervalRun = true;
-        console.log("已关闭定时清屏");
+        console.debug("已关闭定时清屏");
     }
 }
 
@@ -233,7 +250,7 @@ GM_registerMenuCommand("定时清屏右侧弹幕", function () {
     const blurcss = await blur();
     const danmucss = await danmu();
     const css = blurcss + danmucss;
-    console.log("样式表已合并" + css);
+    console.debug("样式表已合并" + css);
     addStyle(css);
     // 添加全部eventlistener
     listener();
