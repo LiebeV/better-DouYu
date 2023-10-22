@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.0.1
+// @version      2.0.2
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -14,10 +14,10 @@
 
 "use strict";
 
-//更新日志，v2.0.1，添加了快捷键“ALT + 6/7/8/9”，用于切换直播间线路
+//更新日志，v2.0.2，修改了全部快捷键修饰键的判断方式，以兼容AltGr布局
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
-//已知问题，无
-//更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
+//已知问题，"AltGr + u"无法正确调用full函数（推测原因，在AltGr事件之前存在Ctrl事件，而Crtl+U为浏览器级快捷键）
+//更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）。完整重写
 
 // 定义一些let变量
 let roomIds = GM_getValue("roomIds", []);
@@ -26,6 +26,12 @@ const userRoomIds = roomIds;
 // let isWide = 0;
 var IntervalId;
 let IntervalRun = false;
+const listenerMap = new Map([
+    ["l", rewrite],
+    ["u", full],
+    ["w", wide],
+])；
+
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
@@ -112,33 +118,21 @@ async function DMback() {
 }
 
 async function listener() {
-    // console.debug("快捷键监听设置完毕");
+    for (const [key, func] of listenerMap) {
+        document.addEventListener("keydown", function(event) {
+            if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key.toLowerCase() === key) {
+                func();
+            }
+        });
+    }
     document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key.toLocaleLowerCase() === "l") {
-            // console.debug("L快捷键触发");
-            rewrite();
-        }
-    });
-    document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key.toLocaleLowerCase() === "u") {
-            // console.debug("U快捷键触发");
-            full();
-        }
-    });
-    document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key.toLocaleLowerCase() === "w") {
-            // console.debug("W快捷键触发");
-            wide();
-        }
-    });
-    document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key >= "1" && event.key <= "5") {
+        if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key >= "1" && event.key <= "5") {
             // console.debug("RES快捷键触发");
             res(parseInt(event.key));
         }
     });
     document.addEventListener("keydown", function (event) {
-        if (event.altKey && event.key >= "6" && event.key <= "9") {
+        if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key >= "6" && event.key <= "9") {
             // console.debug("LINE快捷键触发");
             line(parseInt(event.key));
         }
