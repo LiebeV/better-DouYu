@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.0.2
+// @version      2.0.2_b
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
