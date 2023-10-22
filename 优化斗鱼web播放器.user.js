@@ -30,8 +30,7 @@ const listenerMap = new Map([
     ["l", rewrite],
     ["u", full],
     ["w", wide],
-])；
-
+])
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
