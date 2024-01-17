@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.0.2_b
-// @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果以及定时清除弹幕DOM来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键
+// @version      2.1
+// @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键。暴力隐藏页面元素，获得纯净观看体验
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
 // @match        https://www.douyu.com/*
@@ -14,10 +14,11 @@
 
 "use strict";
 
-//更新日志，v2.0.2，修改了全部快捷键修饰键的判断方式，以兼容AltGr布局
-//**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本不提供长久的css更新维护
-//已知问题，"AltGr + u"无法正确调用full函数（推测原因，在AltGr事件之前存在Ctrl事件，而Crtl+U为浏览器级快捷键）
-//更新计划，为清除右侧弹幕的功能添加相关自定义功能（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）。完整重写
+//更新日志，v2.1，移除了定时清屏功能，添加了暴力隐藏的功能（ALT+ K）,这会隐藏全部除了播放器意外的东西
+//**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本仅提供暴力隐藏的功能
+//**NOTE**:暴力隐藏无法撤销，请刷新网页以恢复
+//已知问题，"Alt + K" 会导致异形屏无法正常使用全尺寸播放器（请暂时使用宽屏模式）。暴力隐藏模式下无法使用ui发送弹幕
+//更新计划，完整重写（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
 
 // 定义一些let变量
 let roomIds = GM_getValue("roomIds", []);
@@ -25,12 +26,14 @@ const userRoomIds = roomIds;
 // let isFull = 0;
 // let isWide = 0;
 var IntervalId;
+const target_xpath = "/html/body/section/main/div[4]/div[1]/div[4]";
 let IntervalRun = false;
 const listenerMap = new Map([
     ["l", rewrite],
     ["u", full],
     ["w", wide],
-])
+    ["k", hide],
+]);
 
 // 屏蔽虚化背景以及文字水印的css
 async function blur() {
@@ -118,7 +121,7 @@ async function DMback() {
 
 async function listener() {
     for (const [key, func] of listenerMap) {
-        document.addEventListener("keydown", function(event) {
+        document.addEventListener("keydown", function (event) {
             if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key.toLowerCase() === key) {
                 func();
             }
@@ -143,20 +146,10 @@ async function rewrite() {
     const liebev = document.getElementById("LiebeV");
     const checker = liebev.innerHTML;
     var css;
-    if (
-        checker.indexOf(
-            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}"
-        ) !== -1
-    ) {
-        css = checker.replace(
-            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}",
-            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}"
-        );
+    if (checker.indexOf(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}") !== -1) {
+        css = checker.replace(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}", ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}");
     } else {
-        css = checker.replace(
-            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}",
-            ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}"
-        );
+        css = checker.replace(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}", ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}");
     }
     // console.debug(css);
     addStyle(css);
@@ -200,7 +193,7 @@ async function res(numberkey) {
 // 最多只见过4个选项。溢出也不会影响
 async function line(numberkey) {
     const lineinput = document.querySelectorAll("ul.menu-da2a9e li");
-    const alllines = Array.from(lineinput).filter(li => li.textContent.includes('线路'));
+    const alllines = Array.from(lineinput).filter((li) => li.textContent.includes("线路"));
     let linelist = [];
     alllines.forEach(function (li) {
         linelist.push(li);
@@ -238,6 +231,77 @@ GM_registerMenuCommand("定时清屏右侧弹幕", function () {
         ifintervalrun();
     }
 });
+
+// 根据/的位置切片Xpath
+async function slice() {
+    const parts = target_xpath.split("/");
+    let xpaths = [];
+    for (let i = 1; i < parts.length; i++) {
+        xpaths.push("/" + parts.slice(1, i + 1).join("/"));
+    }
+
+    console.debug(`来自**优化斗鱼web播放器**:全部的Xpath [${xpaths}]`);
+
+    return xpaths;
+}
+
+// 选中每个元素
+async function select(xpaths) {
+    let elements = [];
+    xpaths.forEach(function (xpath) {
+        var element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        elements.push(element);
+    });
+
+    return elements;
+}
+
+function isDescendant(parent, child) {
+    var node = child.parentNode;
+    while (node != null) {
+        if (node === parent) {
+            return true;
+        }
+        node = node.parentNode;
+    }
+    return false;
+}
+
+// 隐藏所有其他元素
+function hide_all(elements, target_element) {
+    document.querySelectorAll("body *").forEach(function (node) {
+        let is_protected = elements.includes(node) || isDescendant(target_element, node);
+        if (!is_protected) {
+            node.style.display = "none";
+        }
+    });
+}
+
+async function force_hide(target_element) {
+    const protected_xpaths = await slice();
+    const protected_elements = await select(protected_xpaths);
+
+    hide_all(protected_elements, target_element);
+}
+
+function hide() {
+    if (target_xpath) {
+        const target_element = document.evaluate(target_xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let checker;
+        try {
+            checker = target_element.className;
+        } catch (TypeError) {
+            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-0] ---> 页面上没有找到播放器");
+            return;
+        }
+
+        if (checker === "layout-Player-video") {
+            force_hide(target_element);
+        } else {
+            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-1] ---> Xpath描述的元素与预期不符");
+        }
+    }
+}
 
 (async function () {
     const blurcss = await blur();
