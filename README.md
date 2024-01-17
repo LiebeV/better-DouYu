@@ -1,6 +1,6 @@
 # 更好的斗鱼web播放器
 ![GitHub](https://img.shields.io/github/license/LiebeV/disable-DY-blur?color=blue)
-![Greasy Fork](https://img.shields.io/greasyfork/v/461630?label=Greasy%20Fork&color=green)
+<a href="https://greasyfork.org/zh-CN/scripts/461630-%E4%BC%98%E5%8C%96%E6%96%97%E9%B1%BCweb%E6%92%AD%E6%94%BE%E5%99%A8" target="_blank"><img src="https://img.shields.io/greasyfork/v/461630?label=Greasy%20Fork&color=green"></a>
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/LiebeV/disable-DY-blur?logo=github&color=green)
 
 ## 请通过Greasy Fork（自动更新） 或 Releases（手动更新） 向油猴添加user.js以使用此脚本
