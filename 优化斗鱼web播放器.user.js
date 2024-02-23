@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.1
+// @version      2.2
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键。暴力隐藏页面元素，获得纯净观看体验
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -10,14 +10,16 @@
 // @grant        GM_registerMenuCommand
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @downloadURL https://update.greasyfork.org/scripts/461630/%E4%BC%98%E5%8C%96%E6%96%97%E9%B1%BCweb%E6%92%AD%E6%94%BE%E5%99%A8.user.js
+// @updateURL https://update.greasyfork.org/scripts/461630/%E4%BC%98%E5%8C%96%E6%96%97%E9%B1%BCweb%E6%92%AD%E6%94%BE%E5%99%A8.meta.js
 // ==/UserScript==
 
 "use strict";
 
-//更新日志，v2.1，移除了定时清屏功能，添加了暴力隐藏的功能（ALT+ K）,这会隐藏全部除了播放器意外的东西
+//更新日志，v2.2，临时添加了更好的多路观看模式（ALT+ M）,这只是个实验性内容，没有对应的控件，且会暴力覆写网页原有结构（！慎用）
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本仅提供暴力隐藏的功能
 //**NOTE**:暴力隐藏无法撤销，请刷新网页以恢复
-//已知问题，"Alt + K" 会导致异形屏无法正常使用全尺寸播放器（请暂时使用宽屏模式）。暴力隐藏模式下无法使用ui发送弹幕
+//已知问题，暴力重写导致的各种问题
 //更新计划，完整重写（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
 
 // 定义一些let变量
@@ -33,6 +35,7 @@ const listenerMap = new Map([
     ["u", full],
     ["w", wide],
     ["k", hide],
+    ["m", multi],
 ]);
 
 // 屏蔽虚化背景以及文字水印的css
@@ -201,6 +204,109 @@ async function line(numberkey) {
     const choice = numberkey - 6;
     linelist[choice].click();
 }
+
+// *********************暴力************待优化****************
+const videos = () => {
+    return document.querySelectorAll("video");
+};
+
+function createElement() {
+    const container = document.createElement("div");
+    container.classList.add("liebev-multi");
+
+    videos().forEach((video) => {
+        container.appendChild(video);
+    });
+
+    document.body.appendChild(container);
+}
+
+function adjust_size(target) {
+    let isIn = false;
+
+    target.addEventListener("mouseover", (event) => {
+        isIn = true;
+    });
+    target.addEventListener("mouseout", (event) => {
+        isIn = false;
+    });
+
+    target.addEventListener("wheel", (event) => {
+        if (event.deltaY && isIn) {
+            const adjustment = event.deltaY / -10;
+            const currentWidth = target.offsetWidth;
+            const currentHeight = target.offsetHeight;
+
+            target.style.width = `${currentWidth + adjustment}px`;
+            target.style.height = `${currentHeight + adjustment}px`;
+        }
+    });
+}
+
+function adjust_position(target) {
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+
+    const moveAt = (pageX, pageY) => {
+        const deltaX = pageX - startX;
+        const deltaY = pageY - startY;
+        const rect = target.getBoundingClientRect();
+
+        target.style.left = rect.left + deltaX + "px";
+        target.style.top = rect.top + deltaY + "px";
+
+        startX = pageX;
+        startY = pageY;
+    };
+
+    target.addEventListener("mousedown", function (event) {
+        isDragging = true;
+        target.style.cursor = "move";
+
+        startX = event.pageX;
+        startY = event.pageY;
+
+        document.addEventListener("mousemove", onMouseMove);
+    });
+
+    document.addEventListener("mouseup", function () {
+        isDragging = false;
+        target.style.cursor = "default";
+
+        document.removeEventListener("mousemove", onMouseMove);
+    });
+
+    const onMouseMove = function (event) {
+        if (isDragging) {
+            moveAt(event.pageX, event.pageY);
+        }
+    };
+}
+
+function addListeners(target) {
+    adjust_size(target);
+    adjust_position(target);
+}
+
+function multi() {
+    createElement();
+    const container = document.querySelector(".liebev-multi");
+    container.requestFullscreen();
+    videos().forEach((video) => {
+        video.classList.remove("_3kBBGV3-d-EIxmN6JRZPar");
+
+        video.style.setProperty("position", "absolute", "important");
+        video.style.setProperty("left", "0", "important");
+        video.style.setProperty("top", "0", "important");
+        video.style.setProperty("width", "960px", "important");
+        video.style.setProperty("height", "540px", "important");
+
+        addListeners(video);
+    });
+}
+
+// *********************暴力************待优化****************
 
 // 点击原弹幕区控件来清除DOM节点（网页默认DOM上限为200）
 async function rightdomremove() {
