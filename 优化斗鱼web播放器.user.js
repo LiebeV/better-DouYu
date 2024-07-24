@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.2
+// @version      2.3
 // @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键。暴力隐藏页面元素，获得纯净观看体验
 // @author       LiebeV
 // @license      MIT: Copyright (c) 2023 LiebeV
@@ -16,406 +16,396 @@
 
 "use strict";
 
-//更新日志，v2.2，临时添加了更好的多路观看模式（ALT+ M）,这只是个实验性内容，没有对应的控件，且会暴力覆写网页原有结构（！慎用）
+//更新日志，v2.3，完成了代码的逻辑重写，并且优化了多路模式
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本仅提供暴力隐藏的功能
 //**NOTE**:暴力隐藏无法撤销，请刷新网页以恢复
 //已知问题，暴力重写导致的各种问题
-//更新计划，完整重写（请关注主页新项目--“全等级弹幕屏蔽”，“优化斗鱼web鱼吧”）
+//更新计划，多路观看的播放器控件
 
-// 定义一些let变量
-let roomIds = GM_getValue("roomIds", []);
+// ********************一些有的没的的变量*************************
+const roomIds = GM_getValue("roomIds", []);
 const userRoomIds = roomIds;
-// let isFull = 0;
-// let isWide = 0;
-var IntervalId;
-const target_xpath = "/html/body/section/main/div[4]/div[1]/div[4]";
-let IntervalRun = false;
 const listenerMap = new Map([
-    ["l", rewrite],
-    ["u", full],
-    ["w", wide],
-    ["k", hide],
-    ["m", multi],
+    ["l", () => Danmu_control.rewrite_danmu_css()],
+    ["u", () => Player_control.switch_full_mode()],
+    ["w", () => Player_control.switch_wide_mode()],
+    ["k", () => Force_hide.force_clean_hide()],
+    ["m", () => Better_multi.better_multi_mode()],
 ]);
+const target_xpath = "/html/body/section/main/div[4]/div[1]/div[4]";
 
-// 屏蔽虚化背景以及文字水印的css
-async function blur() {
-    console.debug("已经创建blur样式表");
-    return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}`;
-}
+const TBN = "疑似金色悬停骑士团开播提醒：div.broadcastDiv-af5699/疑似周活跃榜提醒：div.DanmuEffectDom-container#douyu_room_normal_player_danmuDom></div>";
+// <div class="ani-broadcast ConfigBroadcast" style="top: 0%; animation: 10000ms linear 0ms 1 normal forwards running dy-ani3;"><img class="ConfigBroadcast-constructor ConfigBroadcast-header" src="https://sta-op.douyucdn.cn/dygev/2024/02/26/1722bef6da6ee637efff9f6878eb25b6.png">
+//                <div class="ConfigBroadcast-midCont ConfigBroadcast-constructor ConfigBroadcast-middle" style="color:#FFFFFF;background:url(https://sta-op.douyucdn.cn/dygev/2024/02/26/392595fc4b8f81f3dec13b313a4b6df2.png) left center;background-repeat:repeat-x;background-size:auto 100%;"><span style="color:#e1f7fe;">本房勇士团完成勇士团补给任务，获得</span><span style="color:#ffbe78;">1.2万流量卡（1天）X1</span><span style="color:#e1f7fe;">，额外</span><span style="color:#ffbe78;">4500</span><span style="color:#e1f7fe;">点战力点</span></div>
+//                <img class="ConfigBroadcast-constructor ConfigBroadcast-footer" src="https://sta-op.douyucdn.cn/dygev/2024/02/26/2e30de374b9689d7834be8b1c2336841.png"></div>
+// <div class="broadcastDiv-af5699" style="visibility: visible;"><div></div><div><div style="white-space: nowrap; cursor: pointer; pointer-events: auto; top: 104px; position: absolute; left: 3822px; transition: transform 7.5s linear 0s; transform: translateX(-4574px);"><img src="https://sta-op.douyucdn.cn/dygev/2023/05/06/6ea4e1741606a07b64c1c7f7c1190f51.png" style="position: absolute; width: 524px; height: 47px; left: 153px; top: 58px; pointer-events: auto;"><img src="https://sta-op.douyucdn.cn/dygev/2023/05/06/eaf16e082d3368d8f376d92294aaf281.png" style="position: absolute; pointer-events: auto;"><img src="https://sta-op.douyucdn.cn/dygev/2023/05/06/e9a35c04e66f934d2072a4e795628750.png" style="position: absolute; left: 677px; top: 40px; pointer-events: auto;"><span style="white-space: nowrap; font: 17px &quot;Arial Black&quot;; width: 494px; position: absolute; top: 69.5px; left: 183px; pointer-events: none;"><font color="#ffffff">最强勇士团礼物冠名主播</font><font color="#ffd967">过载十五岁的涛妹</font><font color="#ffffff">开播了！点击围观吧！</font></span><img src="https://apic.douyucdn.cn/upload/avatar_v3/202310/f19c12c917634989a4f61574230423d8_middle.jpg?rltime" style="position: absolute; top: 55px; left: 59px; width: 50px; height: 50px; border-radius: 25px; pointer-events: auto;"></div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div>
+// **************************************************************
 
-// 屏蔽右侧弹幕区及飘屏弹幕区的css
-// 保留礼物展示
-async function danmu() {
-    const url = window.location.href;
-
-    if (userRoomIds.some((roomId) => url.includes(roomId))) {
-        console.debug("已经创建danmu样式表");
-        return `.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
-    } else {
-        console.debug("无需更新danmu样式表");
-        return `.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
+// 弹幕相关操作
+class DanmuControl {
+    constructor() {
+        this.liebev = document.querySelector("#LiebeV");
     }
-}
+    // 创建新的去背景虚化css（似乎现在只在某些分区保留了这个效果）
+    with_danmu_css = () => {
+        // 没有隐藏弹幕相关
+        return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
+    };
 
-// 用于合并其他本人制作的脚本中生成的css
-async function addStyle(css) {
-    const liebev = document.getElementById("LiebeV");
-    // console.debug(liebev);
-    if (liebev) {
-        liebev.innerHTML = css;
-        console.debug("原css已更新");
-    } else {
-        // 此脚本单独运作时创建liebev标签
-        const style = document.createElement("style");
-        style.id = "LiebeV";
-        style.type = "text/css";
+    without_danmu_css = () => {
+        // 隐藏了弹幕相关
+        return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a{visibility: hidden !important;}`;
+    };
 
-        style.appendChild(document.createTextNode(css));
-        document.head.appendChild(style);
-        console.debug("新css已插入");
-    }
-}
-
-async function showSettings() {
-    let message = "当前设置的房间号列表：\n";
-    const idList = GM_getValue("roomIds", []);
-    for (let i = 0; i < idList.length; i++) {
-        message += `${i + 1}. ${idList[i]}\n`;
-    }
-    const roomIdInput = prompt(`${message}\n请输入要移除（恢复）弹幕的房间号房间号：`);
-    if (roomIdInput) {
-        updateRoomId(roomIdInput);
-    }
-}
-
-GM_registerMenuCommand("房间号设置", showSettings);
-
-// 接受用户输入，进入判断分支
-async function updateRoomId(roomId) {
-    if (!roomIds.includes(roomId)) {
-        roomIds.push(roomId);
-        console.debug(`已添加房间号 ${roomId}`);
-        GM_setValue("roomIds", roomIds);
-        await DMbye();
-    } else {
-        const index = roomIds.indexOf(roomId);
-        if (index !== -1) {
-            roomIds.splice(index, 1);
-            console.debug(`已移除房间号 ${roomId}`);
-            GM_setValue("roomIds", roomIds);
-            await DMback();
+    // 插入新的css
+    update_css = (tobe_css) => {
+        if (this.liebev) {
+            // 如果页面上有其他先置css，则更新内容
+            this.liebev.textContent = tobe_css;
+            console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新");
         } else {
-            console.debug(`输入不合法`);
+            // 否则创建新的style标签
+            const stlye_element = document.createElement("style");
+            stlye_element.id = "LiebeV";
+            stlye_element.type = "text/css";
+
+            stlye_element.appendChild(document.createTextNode(tobe_css));
+            document.head.appendChild(stlye_element);
+            console.debug("来自**优化斗鱼web播放器**: 新deBlur_css已插入");
+
+            this.liebev = document.querySelector("#LiebeV");
         }
+    };
+
+    rewrite_danmu_css = () => {
+        if (this.liebev) {
+            if (this.liebev.textContent == this.with_danmu_css()) {
+                this.update_css(this.without_danmu_css());
+                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*隐藏弹幕*");
+            } else {
+                this.update_css(this.with_danmu_css());
+                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*显示弹幕*");
+            }
+        } else {
+            console.debug("来自**优化斗鱼web播放器**: Error Code [danmu-0]---liebev样式表不存在, 请尝试*刷新网页*或*重装脚本*");
+        }
+    };
+}
+
+// 播放器相关操作
+class PlayerControl {
+    // 发送浏览器全屏/退出全屏事件,无需等待控件加载完成
+    switch_full_mode = () => {
+        if (!document.fullscreenElement) {
+            document.querySelector("#js-player-video-case").requestFullscreen();
+        } else {
+            document.exitFullscreen();
+        }
+    };
+
+    // 模拟双击".video-container-dbc7dc", 因为网页原本就提供了双击播放器来切换的功能，故不做修改
+    switch_wide_mode = () => {
+        let evt = new MouseEvent("dblclick", {
+            bubbles: true,
+            cancelable: true,
+        });
+        document.querySelector(".video-container-dbc7dc").dispatchEvent(evt);
+    };
+
+    // 点击原播放器控件来调整清晰度
+    // 最多只见过5个选项。原画/8M/4M/超清/高清
+    switch_res = (numberkey) => {
+        const resinput = document.querySelector(".tipItem-898596 input[value='画质 ']");
+        const resul = resinput.nextSibling;
+        let reslist = [];
+        resul.childNodes.forEach((li) => {
+            reslist.push(li);
+        });
+        // console.debug(reslist);
+        const choice = numberkey - 1;
+        reslist[choice].click();
+    };
+
+    // 找到了可以用于切换线路可点击的标签
+    // 最多只见过4个选项
+    switch_line = (numberkey) => {
+        const lineinput = document.querySelectorAll("ul.menu-da2a9e li");
+        const alllines = Array.from(lineinput).filter((li) => li.textContent.includes("线路"));
+        let linelist = [];
+        alllines.forEach((li) => {
+            linelist.push(li);
+        });
+        const choice = numberkey - 6;
+        linelist[choice].click();
+    };
+}
+
+class ForceHide {
+    constructor() {
+        // 播放器的核心xpath（包着video的div）
+        this.target_xpath = "/html/body/section/main/div[4]/div[1]/div[4]";
+        // 上面这个元素的className，用于核查页面变动后导致xpath改变
+        this.className_checker = "layout-Player-video";
     }
+
+    // 判断一个元素是否是另一个元素的后代
+    is_descendant = (parent, child) => {
+        let node = child.parentNode;
+        while (node != null) {
+            if (node == parent) {
+                return true;
+            }
+            node = node.parentNode;
+        }
+        return false;
+    };
+
+    // 获取目标元素的祖先
+    get_protected = () => {
+        const xpath_parts = this.target_xpath.split("/");
+        let xpaths = [];
+        for (let i = 1; i < xpath_parts.length; i++) {
+            xpaths.push("/" + xpath_parts.slice(1, i + 1).join("/"));
+        }
+        let protected_elements = [];
+        xpaths.forEach((xpath) => {
+            var element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+            protected_elements.push(element);
+        });
+        return protected_elements;
+    };
+
+    // 获取目标元素
+    get_target = () => {
+        const target_element = document.evaluate(this.target_xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+        let checker;
+        try {
+            checker = target_element.className;
+        } catch (TypeError) {
+            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-0]---页面上没有找到播放器");
+            return;
+        }
+
+        if (checker === this.className_checker) {
+            return target_element;
+        } else {
+            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-1]---Xpath描述的元素与预期不符");
+        }
+    };
+
+    // 强制隐藏保护元素及其祖先之外的所有内容
+    force_clean_hide = () => {
+        const protected_elements = this.get_protected();
+        const target_element = this.get_target();
+
+        document.querySelectorAll("body *").forEach((node) => {
+            let is_protected = protected_elements.includes(node) || this.is_descendant(target_element, node);
+            if (!is_protected) {
+                node.style.display = "none";
+            }
+        });
+    };
 }
 
-// DMbye和back是setting修改时调用的函数
-async function DMbye() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}`;
-    addStyle(css);
+class BetterMulti {
+    mainVideo = () => {
+        return document.querySelector("#js-player-video-case").querySelector("video");
+    };
+    secondVideo = () => {
+        return document.querySelector(".web-double-player");
+    };
+    videos = () => {
+        return [this.mainVideo(), this.secondVideo()];
+    };
+    container = () => {
+        return document.querySelector(".liebev-multi");
+    };
+    controllBar = () => {
+        return document.querySelector(".controlbar-f41e38")
+    };
+
+    // 监听滚轮，调整height/width
+    adjust_size = (target) => {
+        let isIn = false;
+
+        target.addEventListener("mouseover", (event) => {
+            isIn = true;
+        });
+        target.addEventListener("mouseout", (event) => {
+            isIn = false;
+        });
+
+        target.addEventListener("wheel", (event) => {
+            if (event.deltaY && isIn) {
+                // 方向调整，上为增大
+                const adjustment = event.deltaY / -10;
+                const currentWidth = target.offsetWidth;
+                const currentHeight = target.offsetHeight;
+
+                target.style.width = `${currentWidth + adjustment}px`;
+                target.style.height = `${currentHeight + adjustment}px`;
+
+                // 防止滚动页面
+                // 因为行为进入全屏，所以注释掉了
+                event.preventDefault();
+            }
+        });
+    };
+
+    adjust_position = (target) => {
+        let isDragging = false;
+        let startX = 0;
+        let startY = 0;
+
+        const moveAt = (pageX, pageY) => {
+            const deltaX = pageX - startX;
+            const deltaY = pageY - startY;
+            const rect = target.getBoundingClientRect();
+
+            target.style.left = rect.left + deltaX + "px";
+            target.style.top = rect.top + deltaY + "px";
+
+            startX = pageX;
+            startY = pageY;
+        };
+
+        const onMouseMove = (event) => {
+            if (isDragging) {
+                moveAt(event.pageX, event.pageY);
+            }
+        };
+
+        target.addEventListener("mousedown", (event) => {
+            isDragging = true;
+            target.style.cursor = "move";
+
+            startX = event.pageX;
+            startY = event.pageY;
+
+            document.addEventListener("mousemove", onMouseMove);
+        });
+
+        document.addEventListener("mouseup", () => {
+            isDragging = false;
+            target.style.cursor = "default";
+
+            document.removeEventListener("mousemove", onMouseMove);
+        });
+    };
+
+    add_listeners = (target) => {
+        this.adjust_size(target);
+        this.adjust_position(target);
+    };
+
+    // 创建一个新的div并移动所有video元素
+    // 这里要带着播放器控件
+    create_videos_container = () => {
+        const container = document.createElement("div");
+        container.classList.add("liebev-multi");
+        const mainplayer = document.createElement("div");
+        mainplayer.classList.add("liebev-multi-main");
+
+        mainplayer.appendChild(this.mainVideo());
+        mainplayer.appendChild(this.controllBar());
+        container.appendChild(mainplayer);
+        container.appendChild(this.secondVideo());
+
+        document.body.appendChild(container);
+    };
+
+    // 入口
+    // 将新的盒子全屏，并且洗掉原有的css，防止布局问题
+    better_multi_mode = () => {
+        if (!this.container()) {
+            this.create_videos_container();
+        }
+        const new_container = document.querySelector(".liebev-multi");
+        new_container.requestFullscreen();
+        this.videos().forEach((video) => {
+            video.classList.remove("_3kBBGV3-d-EIxmN6JRZPar");
+
+            video.style.setProperty("position", "absolute", "important");
+            video.style.setProperty("left", "0", "important");
+            video.style.setProperty("top", "0", "important");
+            video.style.setProperty("width", "960px", "important");
+            video.style.setProperty("height", "540px", "important");
+
+            this.add_listeners(video);
+        });
+    };
 }
 
-async function DMback() {
-    const css = `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
-    addStyle(css);
-}
-
-async function listener() {
+function listener() {
     for (const [key, func] of listenerMap) {
-        document.addEventListener("keydown", function (event) {
+        document.addEventListener("keydown", (event) => {
             if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key.toLowerCase() === key) {
                 func();
             }
         });
     }
-    document.addEventListener("keydown", function (event) {
+    document.addEventListener("keydown", (event) => {
         if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key >= "1" && event.key <= "5") {
             // console.debug("RES快捷键触发");
-            res(parseInt(event.key));
+            Player_control.switch_res(parseInt(event.key));
         }
     });
-    document.addEventListener("keydown", function (event) {
+    document.addEventListener("keydown", (event) => {
         if ((event.getModifierState("Alt") || event.getModifierState("AltGraph")) && event.key >= "6" && event.key <= "9") {
             // console.debug("LINE快捷键触发");
-            line(parseInt(event.key));
+            Player_control.switch_line(parseInt(event.key));
         }
     });
+    console.debug("来自**优化斗鱼web播放器**: 监听已启动");
 }
 
-// 类似DMbye和back，但是由快捷键触发
-async function rewrite() {
-    const liebev = document.getElementById("LiebeV");
-    const checker = liebev.innerHTML;
-    var css;
-    if (checker.indexOf(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}") !== -1) {
-        css = checker.replace(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}", ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}");
+// *******************Tempermonkey插件菜单********************
+function show_settings() {
+    let message = "当前设置的房间号列表：\n";
+    const id_list = GM_getValue("roomIds", []);
+    for (let i = 0; i < id_list.length; i++) {
+        message += `${i + 1}. ${id_list[i]}\n`;
+    }
+    const Input = prompt(`${message}\n请输入要移除或恢复弹幕的房间号房间号:`);
+    if (Input) {
+        update_roomIds(Input);
+    }
+}
+
+function update_roomIds(Input) {
+    // 接收一个房间号输入，判断是否存在在GM中
+    const index = roomIds.indexOf(Input);
+    if (index === -1) {
+        // 不存在则添加，并执行隐藏弹幕
+        roomIds.push(Input);
+        console.debug(`来自**优化斗鱼web播放器**: 已添加房间号 ${Input}`);
+        Danmu_control.update_css(Danmu_control.without_danmu_css());
     } else {
-        css = checker.replace(".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: hidden !important;}", ".Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}");
+        // 存在则删除，并执行恢复
+        roomIds.splice(index, 1);
+        console.debug(`来自**优化斗鱼web播放器**: 已移除房间号 ${Input}`);
+        Danmu_control.update_css(Danmu_control.with_danmu_css());
     }
-    // console.debug(css);
-    addStyle(css);
+    GM_setValue("roomIds", roomIds);
 }
 
-// 发送浏览器全屏/退出全屏事件
-// 无需等待控件加载完成
-async function full() {
-    if (!document.fullscreenElement) {
-        document.querySelector("#js-player-video-case").requestFullscreen();
+GM_registerMenuCommand("房间号设置", show_settings);
+// *************************************************************
+
+// 全局实例化类
+const Danmu_control = new DanmuControl();
+const Player_control = new PlayerControl();
+const Force_hide = new ForceHide();
+const Better_multi = new BetterMulti();
+
+(function () {
+    console.debug("来自**优化斗鱼web播放器**: 已启动");
+    const url = window.location.href;
+    console.debug("来自**优化斗鱼web播放器**: 类实例化成功");
+    if (userRoomIds.some((roomId) => url.includes(roomId))) {
+        Danmu_control.update_css(Danmu_control.without_danmu_css());
     } else {
-        document.exitFullscreen();
+        Danmu_control.update_css(Danmu_control.with_danmu_css());
     }
-}
-
-// 模拟双击".video-container-dbc7dc"
-// 因为网页原本就提供了双击播放器来切换的功能，故不做修改
-async function wide() {
-    let evt = new MouseEvent("dblclick", {
-        bubbles: true,
-        cancelable: true,
-    });
-    document.querySelector(".video-container-dbc7dc").dispatchEvent(evt);
-}
-
-// 点击原播放器控件来调整清晰度
-// 最多只见过5个选项。原画/8M/4M/超清/高清。溢出也不会影响
-async function res(numberkey) {
-    const resinput = document.querySelector(".tipItem-898596 input[value='画质 ']");
-    const resul = resinput.nextSibling;
-    let reslist = [];
-    resul.childNodes.forEach(function (li) {
-        reslist.push(li);
-    });
-    // console.debug(reslist);
-    const choice = numberkey - 1;
-    reslist[choice].click();
-}
-
-// 找到了可以用于切换线路可点击的标签
-// 最多只见过4个选项。溢出也不会影响
-async function line(numberkey) {
-    const lineinput = document.querySelectorAll("ul.menu-da2a9e li");
-    const alllines = Array.from(lineinput).filter((li) => li.textContent.includes("线路"));
-    let linelist = [];
-    alllines.forEach(function (li) {
-        linelist.push(li);
-    });
-    const choice = numberkey - 6;
-    linelist[choice].click();
-}
-
-// *********************暴力************待优化****************
-const videos = () => {
-    return document.querySelectorAll("video");
-};
-
-function createElement() {
-    const container = document.createElement("div");
-    container.classList.add("liebev-multi");
-
-    videos().forEach((video) => {
-        container.appendChild(video);
-    });
-
-    document.body.appendChild(container);
-}
-
-function adjust_size(target) {
-    let isIn = false;
-
-    target.addEventListener("mouseover", (event) => {
-        isIn = true;
-    });
-    target.addEventListener("mouseout", (event) => {
-        isIn = false;
-    });
-
-    target.addEventListener("wheel", (event) => {
-        if (event.deltaY && isIn) {
-            const adjustment = event.deltaY / -10;
-            const currentWidth = target.offsetWidth;
-            const currentHeight = target.offsetHeight;
-
-            target.style.width = `${currentWidth + adjustment}px`;
-            target.style.height = `${currentHeight + adjustment}px`;
-        }
-    });
-}
-
-function adjust_position(target) {
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-
-    const moveAt = (pageX, pageY) => {
-        const deltaX = pageX - startX;
-        const deltaY = pageY - startY;
-        const rect = target.getBoundingClientRect();
-
-        target.style.left = rect.left + deltaX + "px";
-        target.style.top = rect.top + deltaY + "px";
-
-        startX = pageX;
-        startY = pageY;
-    };
-
-    target.addEventListener("mousedown", function (event) {
-        isDragging = true;
-        target.style.cursor = "move";
-
-        startX = event.pageX;
-        startY = event.pageY;
-
-        document.addEventListener("mousemove", onMouseMove);
-    });
-
-    document.addEventListener("mouseup", function () {
-        isDragging = false;
-        target.style.cursor = "default";
-
-        document.removeEventListener("mousemove", onMouseMove);
-    });
-
-    const onMouseMove = function (event) {
-        if (isDragging) {
-            moveAt(event.pageX, event.pageY);
-        }
-    };
-}
-
-function addListeners(target) {
-    adjust_size(target);
-    adjust_position(target);
-}
-
-function multi() {
-    createElement();
-    const container = document.querySelector(".liebev-multi");
-    container.requestFullscreen();
-    videos().forEach((video) => {
-        video.classList.remove("_3kBBGV3-d-EIxmN6JRZPar");
-
-        video.style.setProperty("position", "absolute", "important");
-        video.style.setProperty("left", "0", "important");
-        video.style.setProperty("top", "0", "important");
-        video.style.setProperty("width", "960px", "important");
-        video.style.setProperty("height", "540px", "important");
-
-        addListeners(video);
-    });
-}
-
-// *********************暴力************待优化****************
-
-// 点击原弹幕区控件来清除DOM节点（网页默认DOM上限为200）
-async function rightdomremove() {
-    var clearbtn = document.querySelector(".Barrage-toolbarClear");
-    clearbtn.click();
-    console.debug("doms been removed");
-}
-
-async function ifintervalrun() {
-    if (IntervalRun == true) {
-        // 定时触发清屏（60s）
-        IntervalId = setInterval(rightdomremove, 60 * 1000);
-        IntervalRun = false;
-        console.debug("已设置定时清屏");
-    } else {
-        clearInterval(IntervalId);
-        IntervalRun = true;
-        console.debug("已关闭定时清屏");
-    }
-}
-
-GM_registerMenuCommand("定时清屏右侧弹幕", function () {
-    const isConfirm = confirm(
-        // 因为初始化调用时更改了IntervalRun的值，所以表达式逻辑相反
-        `当前定时器状态：${IntervalRun ? "禁用" : "启用"}\n是否切换定时器状态？`
-    );
-    if (isConfirm) {
-        ifintervalrun();
-    }
-});
-
-// 根据/的位置切片Xpath
-async function slice() {
-    const parts = target_xpath.split("/");
-    let xpaths = [];
-    for (let i = 1; i < parts.length; i++) {
-        xpaths.push("/" + parts.slice(1, i + 1).join("/"));
-    }
-
-    console.debug(`来自**优化斗鱼web播放器**:全部的Xpath [${xpaths}]`);
-
-    return xpaths;
-}
-
-// 选中每个元素
-async function select(xpaths) {
-    let elements = [];
-    xpaths.forEach(function (xpath) {
-        var element = document.evaluate(xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        elements.push(element);
-    });
-
-    return elements;
-}
-
-function isDescendant(parent, child) {
-    var node = child.parentNode;
-    while (node != null) {
-        if (node === parent) {
-            return true;
-        }
-        node = node.parentNode;
-    }
-    return false;
-}
-
-// 隐藏所有其他元素
-function hide_all(elements, target_element) {
-    document.querySelectorAll("body *").forEach(function (node) {
-        let is_protected = elements.includes(node) || isDescendant(target_element, node);
-        if (!is_protected) {
-            node.style.display = "none";
-        }
-    });
-}
-
-async function force_hide(target_element) {
-    const protected_xpaths = await slice();
-    const protected_elements = await select(protected_xpaths);
-
-    hide_all(protected_elements, target_element);
-}
-
-function hide() {
-    if (target_xpath) {
-        const target_element = document.evaluate(target_xpath, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
-        let checker;
-        try {
-            checker = target_element.className;
-        } catch (TypeError) {
-            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-0] ---> 页面上没有找到播放器");
-            return;
-        }
-
-        if (checker === "layout-Player-video") {
-            force_hide(target_element);
-        } else {
-            console.debug("来自**优化斗鱼web播放器**: Error Code [hide-1] ---> Xpath描述的元素与预期不符");
-        }
-    }
-}
-
-(async function () {
-    const blurcss = await blur();
-    const danmucss = await danmu();
-    const css = blurcss + danmucss;
-    console.debug("样式表已合并" + css);
-    addStyle(css);
-    // 添加全部eventlistener
     listener();
-    ifintervalrun();
 })();
