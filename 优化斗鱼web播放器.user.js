@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         优化斗鱼web播放器
 // @namespace    https://www.liebev.site/monkey/better-douyu
-// @version      2.3
-// @description  douyu优化斗鱼web播放器，通过关闭直播间全屏时的背景虚化效果来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键。暴力隐藏页面元素，获得纯净观看体验
+// @version      2.3.1
+// @description  douyu优化斗鱼web播放器(douyu.com)，通过关闭直播间全屏时的背景虚化效果来解决闪屏卡顿的问题，屏蔽独立直播间的弹幕显示，移除文字水印，添加了一些快捷键。暴力隐藏页面元素，获得纯净观看体验
 // @author       LiebeV
-// @license      MIT: Copyright (c) 2023 LiebeV
+// @license      MIT: Copyright (c) 2023-2025 LiebeV
 // @match        https://www.douyu.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=douyu.com
 // @grant        GM_registerMenuCommand
@@ -16,11 +16,11 @@
 
 "use strict";
 
-//更新日志，v2.3，完成了代码的逻辑重写，并且优化了多路模式
+//更新日志，v2.3.1，提高了弹幕屏蔽css优先级
 //**NOTE**:之于页面上其他不想要看到的东西，请搭配其他例如AdBlock之类的专业广告屏蔽器使用，本脚本仅提供暴力隐藏的功能
 //**NOTE**:暴力隐藏无法撤销，请刷新网页以恢复
 //已知问题，暴力重写导致的各种问题
-//更新计划，多路观看的播放器控件
+//更新计划，无
 
 // ********************一些有的没的的变量*************************
 const roomIds = GM_getValue("roomIds", []);
@@ -46,51 +46,148 @@ class DanmuControl {
     constructor() {
         this.liebev = document.querySelector("#LiebeV");
     }
+
     // 创建新的去背景虚化css（似乎现在只在某些分区保留了这个效果）
     with_danmu_css = () => {
         // 没有隐藏弹幕相关
-        return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a {visibility: unset !important;}`;
+        return `
+            ._1Osm4fzGmcuRK9M8IVy3u6,
+            .watermark-442a18,
+            .is-ybHotDebate,
+            .view-67255d.zoomIn-0f4645 {
+                visibility: hidden !important;
+            }
+
+            .Barrage-main,
+            .Barrage-topFloater,
+            .comment-37342a {
+                display: unset !important;
+            }
+        `;
     };
 
     without_danmu_css = () => {
         // 隐藏了弹幕相关
-        return `._1Osm4fzGmcuRK9M8IVy3u6,.watermark-442a18,.is-ybHotDebate,.view-67255d.zoomIn-0f4645{visibility: hidden !important;}.Barrage-main,.Barrage-topFloater,.comment-37342a{visibility: hidden !important;}`;
+        return `
+            ._1Osm4fzGmcuRK9M8IVy3u6,
+            .watermark-442a18,
+            .is-ybHotDebate,
+            .view-67255d.zoomIn-0f4645 {
+                visibility: hidden !important;
+            }
+
+            .Barrage-main,
+            .Barrage-topFloater,
+            .comment-37342a {
+                display: none !important;
+            }
+        `;
     };
 
-    // 插入新的css
+    /**
+     * 将传入的 CSS 字符串解析后，直接以行内样式的方式应用到匹配到的元素上
+     * @param {string} cssText - 完整的 CSS 文本，例如：".foo{color:red !important} .bar{display:none !important}"
+     */
+    applyInlineCss = (cssText) => {
+        // 简易切分：先按 } 分割成多个规则片段
+        let ruleSegments = cssText.split("}");
+        ruleSegments.forEach(segment => {
+            // 去掉首尾多余空白
+            segment = segment.trim();
+            if (!segment) return;
+
+            // 再按 { 分割，前半部分是选择器(可能逗号分隔多组)，后半部分是具体样式
+            let [selectorPart, stylePart] = segment.split("{");
+            if (!selectorPart || !stylePart) return;
+
+            // 处理选择器，可能是多选择器逗号分隔
+            let selectors = selectorPart.split(",");
+            // 处理style声明，可能有多条用 ; 分隔
+            let styleStr = stylePart.trim().replace(/;$/, "");
+            let styleArr = styleStr.split(";");
+
+            // 存储解析后的 [属性, 值, 是否important]
+            let styleList = [];
+            styleArr.forEach(s => {
+                s = s.trim();
+                if (!s) return;
+                // 以冒号切分
+                let [prop, val] = s.split(":");
+                if (!prop || !val) return;
+
+                prop = prop.trim();
+                val = val.trim();
+
+                // 如果带了 !important 标记，就分离出来
+                let important = false;
+                if (val.includes("!important")) {
+                    important = true;
+                    // 去除 !important
+                    val = val.replace(/!important\s*/i, "").trim();
+                }
+
+                styleList.push({ prop, val, important });
+            });
+
+            // 将解析好的样式列表应用到匹配的每个元素的行内样式上
+            selectors.forEach(sel => {
+                sel = sel.trim();
+                if (!sel) return;
+
+                // querySelectorAll 找到该选择器对应的所有元素
+                let elements = document.querySelectorAll(sel);
+                elements.forEach(el => {
+                    styleList.forEach(styleObj => {
+                        // 这里利用 style.setProperty(prop, val, priority) 来支持 !important
+                        el.style.setProperty(styleObj.prop, styleObj.val, styleObj.important ? "important" : "");
+                    });
+                });
+            });
+        });
+    };
+
+    // 插入新的css（现改为调用 applyInlineCss，以提升优先级到行内样式）
     update_css = (tobe_css) => {
+        // 可以保留或移除原有 <style> 的逻辑，这里演示保留它供参考/调试
+        // --------------------------------------------------------------------
         if (this.liebev) {
             // 如果页面上有其他先置css，则更新内容
+            // 仅仅更新文本以保留 debug，实际不起主导覆盖作用
             this.liebev.textContent = tobe_css;
-            console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新");
+            console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新 - 但主要覆盖由行内样式完成");
         } else {
             // 否则创建新的style标签
             const stlye_element = document.createElement("style");
             stlye_element.id = "LiebeV";
             stlye_element.type = "text/css";
-
             stlye_element.appendChild(document.createTextNode(tobe_css));
             document.head.appendChild(stlye_element);
-            console.debug("来自**优化斗鱼web播放器**: 新deBlur_css已插入");
+            console.debug("来自**优化斗鱼web播放器**: 新deBlur_css已插入 - 但主要覆盖由行内样式完成");
 
             this.liebev = document.querySelector("#LiebeV");
         }
+        // --------------------------------------------------------------------
+
+        // 新增的行内样式覆盖调用
+        this.applyInlineCss(tobe_css);
     };
 
     rewrite_danmu_css = () => {
         if (this.liebev) {
+            // 若已是显示弹幕，则切换到隐藏弹幕；反之亦然
             if (this.liebev.textContent == this.with_danmu_css()) {
                 this.update_css(this.without_danmu_css());
-                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*隐藏弹幕*");
+                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*隐藏弹幕*(行内样式优先)");
             } else {
                 this.update_css(this.with_danmu_css());
-                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*显示弹幕*");
+                console.debug("来自**优化斗鱼web播放器**: liebev样式表已更新为*显示弹幕*(行内样式优先)");
             }
         } else {
             console.debug("来自**优化斗鱼web播放器**: Error Code [danmu-0]---liebev样式表不存在, 请尝试*刷新网页*或*重装脚本*");
         }
     };
 }
+
 
 // 播放器相关操作
 class PlayerControl {
